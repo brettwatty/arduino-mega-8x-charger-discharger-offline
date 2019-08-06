@@ -24,10 +24,11 @@
 #define TEMPERATURE_PRECISION 9
 // #define ONE_WIRE_BUS 2 // Pin 2 Temperature Sensors - PCB Version 1.1
 #define ONE_WIRE_BUS 4 // Pin 4 Temperature Sensors - PCB Version 2.+
-// #define CLK 3 // Rotary Encoder PIN A CLK
-// #define DT 4  // Rotary Encoder PIN B DT
-#define CLK 6 // Rotary Encoder PIN A CLK
-#define DT 7  // Rotary Encoder PIN B DT
+
+// #define CLK 3 // Rotary Encoder PIN A CLK    - PCB Version 1.1
+// #define DT 4  // Rotary Encoder PIN B DT     - PCB Version 1.1
+#define CLK 6 // Rotary Encoder PIN A CLK       - PCB Version 2.+
+#define DT 7  // Rotary Encoder PIN B DT        - PCB Version 2.+
 
 //Objects
 LiquidCrystal_I2C lcd(0x27, 20, 4);  // set the LCD address to 0x27 for a 20 chars and 4 line display
