@@ -98,7 +98,7 @@ Modules module[8] =
 
 typedef struct
 {
-    const float shuntResistor[8] = {3.3, 6.8, 6.8, 6.8, 6.8, 6.8, 6.8, 3.3};
+    const float shuntResistor[8] = {3.3, 3.3, 3.3, 3.3, 3.3, 3.3, 3.3, 3.3};
     const bool useReferenceVoltage = true;         // "true" to use the 5v regulator as the refenence voltage or "false" to use the 1.1V internal voltage reference
     const float referenceVoltage = 4.97;           // 5V output of Arduino
     const float internalReferenceVoltage = 1.1;    // 1.1V internal voltage reference of Arduino
@@ -715,44 +715,53 @@ byte processTemperature(byte j)
     }
 }
 
-int getTemperature(byte j)
+byte getTemperature(byte j)
 {
-    if (module[j].tempCount > 16 || module[j].batteryCurrentTemp == 0) // Read every 16x cycles
+  if (module[j].tempCount > 16 || module[j].batteryCurrentTemp == 0 || module[j].batteryCurrentTemp == 99) // Read every 16x cycles
+  {
+    module[j].tempCount = 0;
+    sensors.requestTemperaturesByAddress(tempSensorSerial[j]);
+    float tempC = sensors.getTempC(tempSensorSerial[j]);
+    if (tempC > 99 || tempC < 0)
     {
-        module[j].tempCount = 0;
-        sensors.requestTemperaturesByAddress(tempSensorSerial[j]);
-        float tempC = sensors.getTempC(tempSensorSerial[j]);
-        if (tempC > 99 || tempC < 0)
-            tempC = 99;
-        return (int)tempC;
+      tempC = 99;
+      if (module[j].batteryCurrentTemp != 99)
+        tempC = module[j].batteryCurrentTemp;
     }
-    else
-    {
-        module[j].tempCount++;
-        return module[j].batteryCurrentTemp;
-    }
+    return (int)tempC;
+  }
+  else
+  {
+    module[j].tempCount++;
+    return module[j].batteryCurrentTemp;
+  }
 }
 
 void getAmbientTemperature()
 {
-    static byte ambientTempCount;
-    if (ambientTempCount > 16 || ambientTemperature == 0) // Read every 16x cycles
+  static byte ambientTempCount;
+  if (ambientTempCount > 16 || ambientTemperature == 0 || ambientTemperature == 99) // Read every 16x cycles
+  {
+    ambientTempCount = 0;
+    sensors.requestTemperaturesByAddress(tempSensorSerial[8]);
+    float tempC = sensors.getTempC(tempSensorSerial[8]);
+    if (tempC > 99 || tempC < 0)
     {
-        ambientTempCount = 0;
-        sensors.requestTemperaturesByAddress(tempSensorSerial[8]);
-        float tempC = sensors.getTempC(tempSensorSerial[8]);
-        if (tempC > 99 || tempC < 0)
-            tempC = 99;
-        ambientTemperature = tempC;
+      tempC = 99;
+      if (ambientTemperature != 99)
+        tempC = ambientTemperature;
     }
-    else
-    {
-        ambientTempCount++;
-    }
+    ambientTemperature = tempC;
+  }
+  else
+  {
+    ambientTempCount++;
+  }
 }
 
 bool batteryCheck(byte j)
 {
+    static byte countVoltDrop;
     module[j].batteryVoltage = readVoltage(module[j].batteryVolatgePin);
     if (module[j].batteryVoltage <= settings.batteryVolatgeLeak)
     {
@@ -762,10 +771,18 @@ bool batteryCheck(byte j)
     {
         if (module[j].batteryLastVoltage - module[j].batteryVoltage >= 0.1)
         {
-            digitalWrite(module[j].chargeMosfetPin, LOW);  // Turn off TP4056
-            digitalWrite(module[j].chargeMosfetPin, HIGH); // Turn on TP4056
-            digitalWrite(module[j].chargeMosfetPin, LOW);  // Turn off TP4056
-            module[j].batteryVoltage = readVoltage(module[j].batteryVolatgePin);
+            if (countVoltDrop > 2)
+            {
+                digitalWrite(module[j].chargeMosfetPin, LOW);  // Turn off TP4056
+                digitalWrite(module[j].chargeMosfetPin, HIGH); // Turn on TP4056
+                digitalWrite(module[j].chargeMosfetPin, LOW);  // Turn off TP4056
+                module[j].batteryVoltage = readVoltage(module[j].batteryVolatgePin);
+                countVoltDrop = 0;
+            }
+            else
+            {
+                countVoltDrop++;
+            }
         }
         module[j].batteryLastVoltage = module[j].batteryVoltage;
         return true;
